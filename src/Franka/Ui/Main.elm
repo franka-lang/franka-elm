@@ -3,8 +3,7 @@ module Franka.Ui.Main exposing (main)
 import Franka.Lang exposing (name, path)
 import Franka.Lang.Command exposing (Command(..))
 import Franka.Lang.Type exposing (app, ref)
-import Html exposing (beginnerProgram, button, div, text)
-import Html.Events exposing (onClick)
+import Html exposing (beginnerProgram, button, div, li, text, ul)
 
 
 main =
@@ -25,22 +24,22 @@ commands =
         { alias = path "franka.lang.path"
         , exp = app (ref "list") [ ref "franka.lang.name" ]
         }
-    , CreateUnionType { path = path "franka.lang.type.exp" }
-    , AddCaseToUnion
-        { union = path "franka.lang.type.exp"
-        , tag = name "ref"
+    , CreateType { path = path "franka.lang.type.exp" }
+    , AddConstructor
+        { to = path "franka.lang.type.exp"
+        , name = name "ref"
         , args = [ ref "franka.lang.path" ]
         }
-    , AddCaseToUnion
-        { union = path "franka.lang.type.exp"
-        , tag = name "app"
+    , AddConstructor
+        { to = path "franka.lang.type.exp"
+        , name = name "app"
         , args = [ ref "franka.lang.type.exp", ref "franka.lang.type.exp" ]
         }
     ]
 
 
 model =
-    0
+    commands
 
 
 
@@ -48,17 +47,11 @@ model =
 
 
 type Msg
-    = Increment
-    | Decrement
+    = NoMsg
 
 
 update msg model =
-    case msg of
-        Increment ->
-            model + 1
-
-        Decrement ->
-            model - 1
+    model
 
 
 
@@ -67,7 +60,12 @@ update msg model =
 
 view model =
     div []
-        [ button [ onClick Decrement ] [ text "-" ]
-        , div [] [ text (toString model) ]
-        , button [ onClick Increment ] [ text "+" ]
+        [ ul []
+            (model
+                |> List.map
+                    (\c ->
+                        li []
+                            [ text (toString c) ]
+                    )
+            )
         ]
