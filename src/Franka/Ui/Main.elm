@@ -1,10 +1,17 @@
 module Franka.Ui.Main exposing (main)
 
+import Dict exposing (Dict)
+import Element exposing (Element, column, el, row, text)
+import Element.Attributes exposing (padding, spacing)
+import Franka.Lang exposing (Name, Path)
 import Franka.Lang.Bootstrap as Bootstrap
 import Franka.Lang.Command exposing (Command(..))
-import Html exposing (beginnerProgram, button, div, li, text, ul)
+import Franka.Lang.Type as Type
+import Franka.Ui.Styles exposing (Styles(..), stylesheet)
+import Html exposing (beginnerProgram)
 
 
+main : Program Never Model Msg
 main =
     beginnerProgram { model = model, view = view, update = update }
 
@@ -14,22 +21,30 @@ main =
 
 
 type alias Model =
-    { count : Int
-    , types : List String
+    { typeContext : TypeContext
+    }
+
+
+type alias TypeContext =
+    { aliases : Dict Path Type.Exp
+    , types : Dict Path (List ( Name, List Type.Exp ))
     }
 
 
 init : Model
 init =
-    { count = 0
-    , types = []
+    { typeContext =
+        { aliases = Dict.empty
+        , types = Dict.empty
+        }
     }
 
 
 model : Model
 model =
     Bootstrap.commands
-        |> List.foldl applyCommand init
+        |> List.map ApplyCommand
+        |> List.foldl update init
 
 
 
@@ -40,28 +55,42 @@ type Msg
     = ApplyCommand Command
 
 
+update : Msg -> Model -> Model
 update msg model =
     case msg of
         ApplyCommand cmd ->
-            applyCommand cmd model
-
-
-applyCommand : Command -> Model -> Model
-applyCommand cmd model =
-    case cmd of
-        CreateTypeAlias { alias } ->
             { model
-                | types = model.types ++ [ toString alias ]
+                | typeContext = applyCommand cmd model.typeContext
+            }
+
+
+applyCommand : Command -> TypeContext -> TypeContext
+applyCommand cmd ctx =
+    case cmd of
+        CreateTypeAlias { alias, exp } ->
+            { ctx
+                | aliases =
+                    ctx.aliases
+                        |> Dict.insert alias exp
             }
 
         CreateType { path } ->
-            { model
-                | types = model.types ++ [ toString path ]
+            { ctx
+                | types =
+                    ctx.types
+                        |> Dict.insert path []
             }
 
-        _ ->
-            { model
-                | count = model.count + 1
+        AddConstructor { to, name, args } ->
+            { ctx
+                | types =
+                    ctx.types
+                        |> Dict.update to
+                            (Maybe.map
+                                (\cs ->
+                                    List.append cs [ ( name, args ) ]
+                                )
+                            )
             }
 
 
@@ -69,14 +98,43 @@ applyCommand cmd model =
 -- VIEW
 
 
+view : Model -> Html.Html msg
 view model =
-    div []
-        [ text (toString model.count)
-        , ul []
-            (model.types
-                |> List.map
-                    (\t ->
-                        li [] [ text t ]
-                    )
-            )
-        ]
+    Element.layout stylesheet <|
+        column NoStyle
+            [ padding 10
+            , spacing 10
+            ]
+            [ text "Aliases"
+            , column NoStyle
+                [ padding 10
+                ]
+                (model.typeContext.aliases
+                    |> Dict.toList
+                    |> List.map
+                        (\( alias, exp ) ->
+                            text (toString alias)
+                        )
+                )
+            , text "Types"
+            , column NoStyle
+                [ padding 10
+                ]
+                (model.typeContext.types
+                    |> Dict.toList
+                    |> List.concatMap
+                        (\( path, constructors ) ->
+                            [ text (toString path)
+                            , column NoStyle
+                                [ padding 10
+                                ]
+                                (constructors
+                                    |> List.map
+                                        (\( name, args ) ->
+                                            text (toString name)
+                                        )
+                                )
+                            ]
+                        )
+                )
+            ]

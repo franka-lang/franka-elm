@@ -9,13 +9,18 @@ commands : List Command
 commands =
     [ CreateTypeAlias
         { alias = path "franka.lang.name"
-        , exp = app [ ref "list", ref "string" ]
+        , exp = app [ ref "list.list", ref "string.string" ]
         }
     , CreateTypeAlias
         { alias = path "franka.lang.path"
-        , exp = app [ ref "list", ref "franka.lang.name" ]
+        , exp = app [ ref "list.list", ref "franka.lang.name" ]
         }
     , CreateType { path = path "franka.lang.type.exp" }
+    , AddConstructor
+        { to = path "franka.lang.type.exp"
+        , name = name "bottom"
+        , args = [ ref "string.string" ]
+        }
     , AddConstructor
         { to = path "franka.lang.type.exp"
         , name = name "ref"
